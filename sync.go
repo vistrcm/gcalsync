@@ -18,7 +18,7 @@ func syncCalendars() {
 	if err != nil {
 		log.Fatalf("Error reading config file: %v", err)
 	}
-	useReminders := config.DisableReminders
+	useReminders := !config.DisableReminders
 	eventVisibility := config.EventVisibility
 
 	db, err := openDB(".gcalsync.db")
@@ -157,7 +157,10 @@ func syncCalendar(db *sql.DB, calendarService *calendar.Service, calendarID stri
 								},
 							}
 							if !useReminders {
-								blockerEvent.Reminders = nil
+								blockerEvent.Reminders = &calendar.EventReminders{
+									UseDefault: false,
+									Overrides:  []*calendar.EventReminder{}, // Empty slice for no reminders
+								}
 							}
 
 							if eventVisibility != "" {
