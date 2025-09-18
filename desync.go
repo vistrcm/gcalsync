@@ -37,32 +37,47 @@ func desyncCalendars() {
 		CalendarID string
 	}
 
+	var events []struct {
+		EventID     string
+		CalendarID  string
+		AccountName string
+	}
+
 	for rows.Next() {
-		var eventID, calendarID, accountName string
-		if err := rows.Scan(&eventID, &calendarID, &accountName); err != nil {
+		var event struct {
+			EventID     string
+			CalendarID  string
+			AccountName string
+		}
+
+		if err := rows.Scan(&event.EventID, &event.CalendarID, &event.AccountName); err != nil {
 			log.Fatalf("❌ Error scanning blocker event row: %v", err)
 		}
 
+		events = append(events, event)
+	}
+
+	for _, event := range events {
 		eventIDCalendarIDPairs = append(eventIDCalendarIDPairs, struct {
 			EventID    string
 			CalendarID string
-		}{EventID: eventID, CalendarID: calendarID})
+		}{EventID: event.EventID, CalendarID: event.CalendarID})
 
-		client := getClient(ctx, oauthConfig, db, accountName, config)
+		client := getClient(ctx, oauthConfig, db, event.AccountName, config)
 		calendarService, err := calendar.NewService(ctx, option.WithHTTPClient(client))
 		if err != nil {
 			log.Fatalf("❌ Error creating calendar client: %v", err)
 		}
 
-		err = calendarService.Events.Delete(calendarID, eventID).Do()
+		err = calendarService.Events.Delete(event.CalendarID, event.EventID).Do()
 		if err != nil {
-			if googleErr, ok := err.(*googleapi.Error); ok && googleErr.Code == 404 {
-				fmt.Printf("  ⚠️ Blocker event not found in calendar: %s\n", eventID)
+			if googleErr, ok := err.(*googleapi.Error); ok && (googleErr.Code == 404 || googleErr.Code == 410) {
+				fmt.Printf("  ⚠️ Blocker event not found in calendar: %s\n", event.EventID)
 			} else {
-				log.Fatalf("❌ Error deleting blocker event: %v", err)
+				log.Fatalf("❌ Error deleting blocker event: %+v", err)
 			}
 		} else {
-			fmt.Printf("  ✅ Blocker event deleted: %s\n", eventID)
+			fmt.Printf("  ✅ Blocker event deleted: %s\n", event.EventID)
 		}
 	}
 
