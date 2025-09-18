@@ -192,7 +192,9 @@ func getClient(ctx context.Context, config *oauth2.Config, db *sql.DB, accountNa
 		if err != nil {
 			log.Fatalf("Error refreshing token: %v", err)
 		}
-		saveToken(db, accountName, newToken)
+		if err := saveToken(db, accountName, newToken); err != nil {
+			log.Fatalf("Error saving token: %v", err)
+		}
 		return config.Client(ctx, newToken)
 	}
 
