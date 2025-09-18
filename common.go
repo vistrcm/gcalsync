@@ -185,7 +185,8 @@ func getClient(ctx context.Context, config *oauth2.Config, db *sql.DB, accountNa
 	}
 
 	// Check if the token is expired and refresh it if necessary
-	if token.Expiry.Before(time.Now()) {
+	const tokenExpiryBuffer = 30 * time.Second
+	if token.Expiry.UTC().Add(-tokenExpiryBuffer).Before(time.Now()) {
 		fmt.Printf("  ❗️ Token expired for account %s. Refreshing token.\n", accountName)
 		newToken, err := config.TokenSource(ctx, &token).Token()
 		if err != nil {
