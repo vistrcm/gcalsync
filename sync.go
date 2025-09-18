@@ -32,6 +32,10 @@ func syncCalendars() {
 	ctx := context.Background()
 	fmt.Println("🚀 Starting calendar synchronization...")
 	for accountName, calendarIDs := range calendars {
+		if accountName == "ripple" {
+			fmt.Printf("⏭️ not syncing calendars for account: %s\n", accountName)
+			continue
+		}
 		fmt.Printf("📅 Syncing calendars for account: %s\n", accountName)
 		client := getClient(ctx, oauthConfig, db, accountName, config)
 		calendarService, err := calendar.NewService(ctx, option.WithHTTPClient(client))
@@ -136,6 +140,11 @@ func syncCalendar(db *sql.DB, calendarService *calendar.Service, calendarID stri
 
 							blockerSummary := fmt.Sprintf("O_o %s", event.Summary)
 							blockerDescription := event.Description
+
+							if otherAccountName == "ripple" {
+								blockerSummary = "O_o blocker"
+								blockerDescription = fmt.Sprintf("see %s calendar for details", accountName)
+							}
 
 							if event.End == nil {
 								startTime, _ := time.Parse(time.RFC3339, event.Start.DateTime)
