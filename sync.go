@@ -167,8 +167,9 @@ func syncCalendar(db *sql.DB, calendarService *calendar.Service, calendarID stri
 							}
 							if !useReminders {
 								blockerEvent.Reminders = &calendar.EventReminders{
-									UseDefault: false,
-									Overrides:  []*calendar.EventReminder{}, // Empty slice for no reminders
+									UseDefault:      false,
+									Overrides:       []*calendar.EventReminder{},
+									ForceSendFields: []string{"UseDefault"},
 								}
 							}
 
