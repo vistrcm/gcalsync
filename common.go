@@ -28,11 +28,12 @@ type GoogleConfig struct {
 }
 
 type GeneralConfig struct {
-	DisableReminders bool   `toml:"disable_reminders"`
-	EventVisibility  string `toml:"block_event_visibility"`
-	AuthorizedPorts  []int  `toml:"authorized_ports"`
-	Verbosity        int    `toml:"verbosity"`
-	IgnoreBirthdays  bool   `toml:"ignore_birthdays"`
+	DisableReminders    bool     `toml:"disable_reminders"`
+	EventVisibility     string   `toml:"block_event_visibility"`
+	AuthorizedPorts     []int    `toml:"authorized_ports"`
+	Verbosity           int      `toml:"verbosity"`
+	IgnoreBirthdays     bool     `toml:"ignore_birthdays"`
+	PrivateSyncAccounts []string `toml:"private_sync_accounts"`
 }
 
 type Config struct {

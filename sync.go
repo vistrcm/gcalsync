@@ -21,6 +21,7 @@ func syncCalendars() {
 	useReminders := !config.General.DisableReminders
 	eventVisibility := config.General.EventVisibility
 	ignoreBirthdays := config.General.IgnoreBirthdays
+	privateSyncAccounts := config.General.PrivateSyncAccounts
 
 	db, err := openDB(".gcalsync.db")
 	if err != nil {
@@ -33,7 +34,7 @@ func syncCalendars() {
 	ctx := context.Background()
 	fmt.Println("🚀 Starting calendar synchronization...")
 	for accountName, calendarIDs := range calendars {
-		if accountName == "ripple" {
+		if isPrivateSyncAccount(accountName, privateSyncAccounts) {
 			fmt.Printf("⏭️ not syncing calendars for account: %s\n", accountName)
 			continue
 		}
@@ -46,7 +47,7 @@ func syncCalendars() {
 
 		for _, calendarID := range calendarIDs {
 			fmt.Printf("  ↪️ Syncing calendar: %s\n", calendarID)
-			syncCalendar(db, calendarService, calendarID, calendars, accountName, useReminders, eventVisibility, ignoreBirthdays)
+			syncCalendar(db, calendarService, calendarID, calendars, accountName, useReminders, eventVisibility, ignoreBirthdays, privateSyncAccounts)
 		}
 		fmt.Println("✅ Calendar synchronization completed successfully!")
 	}
@@ -68,7 +69,7 @@ func getCalendarsFromDB(db *sql.DB) map[string][]string {
 	return calendars
 }
 
-func syncCalendar(db *sql.DB, calendarService *calendar.Service, calendarID string, calendars map[string][]string, accountName string, useReminders bool, eventVisibility string, ignoreBirthdays bool) {
+func syncCalendar(db *sql.DB, calendarService *calendar.Service, calendarID string, calendars map[string][]string, accountName string, useReminders bool, eventVisibility string, ignoreBirthdays bool, privateSyncAccounts []string) {
 	config, err := readConfig(".gcalsync.toml")
 	if err != nil {
 		log.Fatalf("Error reading config file: %v", err)
@@ -149,7 +150,7 @@ func syncCalendar(db *sql.DB, calendarService *calendar.Service, calendarID stri
 							blockerSummary := fmt.Sprintf("O_o %s", event.Summary)
 							blockerDescription := event.Description
 
-							if otherAccountName == "ripple" {
+							if isPrivateSyncAccount(otherAccountName, privateSyncAccounts) {
 								blockerSummary = "O_o blocker"
 								blockerDescription = fmt.Sprintf("see %s calendar for details", accountName)
 							}
@@ -285,4 +286,13 @@ func syncCalendar(db *sql.DB, calendarService *calendar.Service, calendarID stri
 			}
 		}
 	}
+}
+
+func isPrivateSyncAccount(accountName string, privateSyncAccounts []string) bool {
+	for _, account := range privateSyncAccounts {
+		if account == accountName {
+			return true
+		}
+	}
+	return false
 }
