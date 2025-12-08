@@ -108,6 +108,12 @@ func syncCalendar(db *sql.DB, calendarService *calendar.Service, calendarID stri
 				continue
 			}
 
+			// Guard against malformed events without start times
+			if event.Start == nil {
+				fmt.Printf("    ⚠️ Skipping event with no start time: %s\n", event.Summary)
+				continue
+			}
+
 			// Check if this is a birthday event and skip if ignore_birthdays is enabled
 			if ignoreBirthdays && event.EventType == "birthday" {
 				fmt.Printf("    🎂 Skipping birthday event: %s\n", event.Summary)
