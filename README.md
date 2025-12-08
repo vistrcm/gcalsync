@@ -13,6 +13,9 @@ Say goodbye to calendar conflicts and hello to seamless synchronization. 🎉
 -   🗄️ Store access tokens and calendar data securely in a local SQLite database
 -   🔒 Authenticate with Google using the OAuth2 flow for desktop apps
 -   🧹 Easy way to cleanup calendars and remove all blocker events with a single command
+-   🎯 Filter events by type: skip birthdays, full-day events, or working locations
+-   🔐 Private sync accounts for work/personal separation with generic blocker names
+-   🏷️ Event metadata to customize blocker summaries for individual events
 
 ## 📋 Prerequisites
 
@@ -47,7 +50,10 @@ Say goodbye to calendar conflicts and hello to seamless synchronization. 🎉
     disable_reminders = false              # Disable reminders for blocker events
     block_event_visibility = "private"     # Visibility of blocker events (private, public, or default)
     authorized_ports = [8080, 8081, 8082]  # Ports that can be used for OAuth callback
-    
+    ignore_birthdays = false               # Skip syncing birthday events
+    ignore_fullday = false                 # Skip syncing full-day (all-day) events
+    private_sync_accounts = []             # Accounts with one-way sync and private blocker names
+
     [google]
     client_id = "your-client-id"           # Your OAuth2 client ID
     client_secret = "your-client-secret"   # Your OAuth2 client secret
@@ -99,6 +105,34 @@ To desync your calendars and remove all blocker events, run the `gcalsync desync
 
 To list all calendars that have been added to the local database, run the `gcalsync list` command. The program will display the account name and calendar ID for each calendar.
 
+### 🎯 Event Filtering
+
+gcalsync provides several options to filter which events get synced:
+
+**Skipping Birthday Events**: Set `ignore_birthdays = true` in your config to skip syncing birthday events from Google Contacts. This prevents your personal birthdays from cluttering your work calendar.
+
+**Skipping Full-Day Events**: Set `ignore_fullday = true` in your config to skip syncing all-day events. This is useful if you only want to sync timed events and keep full-day events separate.
+
+**Working Location Events**: Google Calendar's "working location" events (office/home/etc) are always skipped automatically.
+
+### 🔐 Private Sync Accounts
+
+You can designate certain accounts as "private sync" accounts by adding them to the `private_sync_accounts` list in your config:
+
+```toml
+[general]
+private_sync_accounts = ["work", "consulting"]
+```
+
+Private sync accounts receive special handling:
+- **One-way sync**: These accounts receive blocker events from other calendars, but their events don't create blockers in other calendars
+- **Private names**: Blocker events sent TO these accounts show "O_o blocker" instead of the actual event summary
+- **Generic description**: The description says "see [account] calendar for details" instead of copying the real description
+
+This is perfect for work/personal calendar separation where you want your work calendar to know you're busy, but not see the details of your personal appointments.
+
+**Tip**: You can still override the generic "O_o blocker" text for specific events using event metadata (see Event Metadata section below).
+
 ### 🎗️ Disabling Reminders
 
 By default blocker events will inherit your default Google Calendar reminder/alert settings (typically – 10 minutes before the event). If you *do not want* to receive reminders for the blocker events, you can disable them by setting the `disable_reminders` field to `true` in the `.gcalsync.toml` configuration file.
@@ -106,6 +140,32 @@ By default blocker events will inherit your default Google Calendar reminder/ale
 ### 🕶️ Setting Block Event Visibility
 
 By default blocker events will be created with the visibility set to "private". If you want to change the visibility of blocker events, you can set the `block_event_visibility` field to "public" or "default" in the `.gcalsync.toml` configuration file.
+
+### 🏷️ Event Metadata
+
+You can customize how individual events are synced by adding special metadata to the event description. This is useful when you want to override the default blocker summary for specific events, especially for private sync accounts.
+
+**Format**: Add lines in the format `#gcalsync:key=value` to your event description.
+
+**Supported Metadata**:
+- `#gcalsync:summary=Custom Summary` - Override the blocker event summary with custom text
+
+**Example**:
+
+If you create an event with:
+- **Summary**: "Strategy Meeting"
+- **Description**:
+  ```
+  #gcalsync:summary=Client Call
+
+  Discussing Q1 goals and budget allocation
+  ```
+
+The blocker event will have:
+- **Summary**: "O_o Client Call" (even for private sync accounts)
+- **Description**: "Discussing Q1 goals and budget allocation" (metadata line removed)
+
+This feature is particularly useful for private sync accounts where you want to show slightly more context than the generic "O_o blocker" text, but still keep full details private.
 
 ### Configuration File
 
@@ -125,7 +185,10 @@ Additional sections and fields can be added to configure the program behavior:
 block_event_visibility = "private"    # Keep O_o event public or private
 disable_reminders = true              # Set reminders on O_o events or not
 verbosity_level = 1                   # How much chatter to spill out when running sync
-authorized_ports = [3000, 3001, 3002] # Casllback ports to listen to for OAuth token response
+authorized_ports = [3000, 3001, 3002] # Callback ports to listen to for OAuth token response
+ignore_birthdays = false              # Skip syncing birthday events
+ignore_fullday = false                # Skip syncing full-day (all-day) events
+private_sync_accounts = ["work"]      # Accounts with one-way sync and private blocker names
 ```
 
 #### 🔌 Configuration Parameters
@@ -138,6 +201,9 @@ authorized_ports = [3000, 3001, 3002] # Casllback ports to listen to for OAuth t
   - `block_event_visibility`: Defines whether you want to keep blocker events ("O_o") publicly visible or not. Posible values are `private` or `public`. If ommitted -- `public` is used.
   - `disable_reminders`: Whether your blocker events should stay quite and **not** alert you. Possible values are `true` or `false`. default is `false`.
   - `verbosity_level`: How "chatty" you want the app to be 1..3 with 1 being mostly quite and 3 giving you full details of what it is doing.
+  - `ignore_birthdays`: Skip syncing birthday events. Set to `true` to ignore birthdays. Default is `false`.
+  - `ignore_fullday`: Skip syncing full-day (all-day) events. Set to `true` to ignore them. Default is `false`.
+  - `private_sync_accounts`: List of account names that receive blocker events but don't create blockers in other calendars. Blocker events sent to these accounts use generic text "O_o blocker" instead of revealing event details. Useful for work/personal calendar separation.
 
 ## 🤝 Contributing
 
