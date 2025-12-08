@@ -128,6 +128,21 @@ func syncCalendar(db *sql.DB, calendarService *calendar.Service, calendarID stri
 
 			if !strings.Contains(event.Summary, "O_o") {
 				fmt.Printf("    ✨ Syncing event: %s\n", event.Summary)
+
+				// Parse metadata once per event
+				metadata, cleanedDescription := parseEventMetadata(event.Description)
+
+				// Get original event's response status for the calendar owner
+				originalResponseStatus := "accepted" // default
+				if event.Attendees != nil {
+					for _, attendee := range event.Attendees {
+						if attendee.Email == calendarID {
+							originalResponseStatus = attendee.ResponseStatus
+							break
+						}
+					}
+				}
+
 				for otherAccountName, calendarIDs := range calendars {
 					for _, otherCalendarID := range calendarIDs {
 						if otherCalendarID != calendarID {
@@ -136,17 +151,6 @@ func syncCalendar(db *sql.DB, calendarService *calendar.Service, calendarID stri
 							var originCalendarID string
 							var responseStatus string
 							err := db.QueryRow("SELECT event_id, last_updated, origin_calendar_id, response_status FROM blocker_events WHERE calendar_id = ? AND origin_event_id = ?", otherCalendarID, event.Id).Scan(&existingBlockerEventID, &last_updated, &originCalendarID, &responseStatus)
-
-							// Get original event's response status for the calendar owner
-							originalResponseStatus := "accepted" // default
-							if event.Attendees != nil {
-								for _, attendee := range event.Attendees {
-									if attendee.Email == calendarID {
-										originalResponseStatus = attendee.ResponseStatus
-										break
-									}
-								}
-							}
 
 							// Only skip if event exists, is up to date, and response status hasn't changed
 							if err == nil && last_updated == event.Updated && originCalendarID == calendarID && responseStatus == originalResponseStatus {
@@ -159,9 +163,6 @@ func syncCalendar(db *sql.DB, calendarService *calendar.Service, calendarID stri
 							if err != nil {
 								log.Fatalf("Error creating calendar client: %v", err)
 							}
-
-							// Parse metadata from event description
-							metadata, cleanedDescription := parseEventMetadata(event.Description)
 
 							blockerSummary := fmt.Sprintf("O_o %s", event.Summary)
 							blockerDescription := cleanedDescription
