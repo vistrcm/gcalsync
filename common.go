@@ -33,6 +33,7 @@ type GeneralConfig struct {
 	AuthorizedPorts     []int    `toml:"authorized_ports"`
 	Verbosity           int      `toml:"verbosity"`
 	IgnoreBirthdays     bool     `toml:"ignore_birthdays"`
+	IgnoreFullday       bool     `toml:"ignore_fullday"`
 	PrivateSyncAccounts []string `toml:"private_sync_accounts"`
 }
 

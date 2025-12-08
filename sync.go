@@ -21,6 +21,7 @@ func syncCalendars() {
 	useReminders := !config.General.DisableReminders
 	eventVisibility := config.General.EventVisibility
 	ignoreBirthdays := config.General.IgnoreBirthdays
+	ignoreFullday := config.General.IgnoreFullday
 	privateSyncAccounts := config.General.PrivateSyncAccounts
 
 	db, err := openDB(".gcalsync.db")
@@ -47,7 +48,7 @@ func syncCalendars() {
 
 		for _, calendarID := range calendarIDs {
 			fmt.Printf("  ↪️ Syncing calendar: %s\n", calendarID)
-			syncCalendar(db, calendarService, calendarID, calendars, accountName, useReminders, eventVisibility, ignoreBirthdays, privateSyncAccounts)
+			syncCalendar(db, calendarService, calendarID, calendars, accountName, useReminders, eventVisibility, ignoreBirthdays, ignoreFullday, privateSyncAccounts)
 		}
 		fmt.Println("✅ Calendar synchronization completed successfully!")
 	}
@@ -69,7 +70,7 @@ func getCalendarsFromDB(db *sql.DB) map[string][]string {
 	return calendars
 }
 
-func syncCalendar(db *sql.DB, calendarService *calendar.Service, calendarID string, calendars map[string][]string, accountName string, useReminders bool, eventVisibility string, ignoreBirthdays bool, privateSyncAccounts []string) {
+func syncCalendar(db *sql.DB, calendarService *calendar.Service, calendarID string, calendars map[string][]string, accountName string, useReminders bool, eventVisibility string, ignoreBirthdays bool, ignoreFullday bool, privateSyncAccounts []string) {
 	config, err := readConfig(".gcalsync.toml")
 	if err != nil {
 		log.Fatalf("Error reading config file: %v", err)
@@ -110,6 +111,12 @@ func syncCalendar(db *sql.DB, calendarService *calendar.Service, calendarID stri
 			// Check if this is a birthday event and skip if ignore_birthdays is enabled
 			if ignoreBirthdays && event.EventType == "birthday" {
 				fmt.Printf("    🎂 Skipping birthday event: %s\n", event.Summary)
+				continue
+			}
+
+			// Check if this is a full-day event and skip if ignore_fullday is enabled
+			if ignoreFullday && event.Start.Date != "" {
+				fmt.Printf("    📅 Skipping fullday event: %s\n", event.Summary)
 				continue
 			}
 
