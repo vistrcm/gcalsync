@@ -147,12 +147,20 @@ func syncCalendar(db *sql.DB, calendarService *calendar.Service, calendarID stri
 								log.Fatalf("Error creating calendar client: %v", err)
 							}
 
+							// Parse metadata from event description
+							metadata, cleanedDescription := parseEventMetadata(event.Description)
+
 							blockerSummary := fmt.Sprintf("O_o %s", event.Summary)
-							blockerDescription := event.Description
+							blockerDescription := cleanedDescription
 
 							if isPrivateSyncAccount(otherAccountName, privateSyncAccounts) {
 								blockerSummary = "O_o blocker"
 								blockerDescription = fmt.Sprintf("see %s calendar for details", accountName)
+							}
+
+							// Override with metadata if present
+							if customSummary, ok := metadata["summary"]; ok {
+								blockerSummary = fmt.Sprintf("O_o %s", customSummary)
 							}
 
 							if event.End == nil {
@@ -295,4 +303,34 @@ func isPrivateSyncAccount(accountName string, privateSyncAccounts []string) bool
 		}
 	}
 	return false
+}
+
+// parseEventMetadata extracts metadata from event description in the format:
+// #gcalsync:key=value
+// Returns a map of metadata and the cleaned description (without metadata lines)
+func parseEventMetadata(description string) (map[string]string, string) {
+	metadata := make(map[string]string)
+	lines := strings.Split(description, "\n")
+	cleanedLines := make([]string, 0, len(lines))
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "#gcalsync:") {
+			// Extract key=value from #gcalsync:key=value
+			kvPart := strings.TrimPrefix(trimmed, "#gcalsync:")
+			parts := strings.SplitN(kvPart, "=", 2)
+			if len(parts) == 2 {
+				key := strings.TrimSpace(parts[0])
+				value := strings.TrimSpace(parts[1])
+				metadata[key] = value
+			}
+		} else {
+			cleanedLines = append(cleanedLines, line)
+		}
+	}
+
+	cleanedDescription := strings.Join(cleanedLines, "\n")
+	cleanedDescription = strings.TrimSpace(cleanedDescription)
+
+	return metadata, cleanedDescription
 }
